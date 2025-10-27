@@ -4,15 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DealCity Map</title>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v2.16.1/mapbox-gl.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/mapbox-gl@2.16.1/dist/mapbox-gl.css" rel="stylesheet" />
   <link href="styles.css" rel="stylesheet" />
 </head>
 <body>
   <div id="map"></div>
   <div id="err" class="error-banner" style="display:none"></div>
 
-  <!-- Mapbox GL JS must load before app.js; defer preserves order -->
-  <script defer src="https://api.mapbox.com/mapbox-gl-js/v2.16.1/mapbox-gl.js"></script>
+  <!-- Load GL first, then your app; defer preserves order -->
+  <script defer src="https://cdn.jsdelivr.net/npm/mapbox-gl@2.16.1/dist/mapbox-gl.js"></script>
   <script defer src="app.js?v=1"></script>
 </body>
 </html>
