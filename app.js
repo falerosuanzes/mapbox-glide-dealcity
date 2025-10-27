@@ -1,29 +1,30 @@
 'use strict';
 
-// Small helper to show visible errors
+// Visible error helper
 function showError(msg) {
   const el = document.getElementById('err');
   if (el) { el.textContent = msg; el.style.display = 'block'; }
   console.warn('[Map error]', msg);
 }
 
-console.log('app.js v1 running');
-
-// 1) Token: public pk token, quoted. Restrict Allowed URLs to:
-// https://falerosuanzes.github.io and your Glide domain.
+console.log('app.js v1 running, typeof mapboxgl =', typeof mapboxgl);
 if (typeof mapboxgl === 'undefined') {
-  showError('Mapbox GL JS did not load. Check the script tag and any blockers.');
+  showError('Mapbox GL JS did not load. Try the provided CDN, hard-refresh, or self-host mapbox-gl.');
   throw new Error('mapboxgl missing');
 }
+
+// Public, origin-restricted token (set Allowed URLs to your GH Pages and Glide domains)
 mapboxgl.accessToken = 'pk.eyJ1IjoicGZhbGVybyIsImEiOiJjbWg1MjM2aXgwMzlxMmpvYXl5amphcWJhIn0.efd7l1ZBRlEs6BFmPhigew';
 
+// Optional: WebGL check
 if (!mapboxgl.supported()) {
-  showError('WebGL not supported. Enable hardware acceleration or try another browser.');
+  showError('WebGL not supported. Enable hardware acceleration or use a modern browser.');
   throw new Error('WebGL not supported');
 }
 
-// 2) Create map with your custom style
+// Your custom style
 const STYLE_URL = 'mapbox://styles/pfalero/cmh3l072w001201qpegcy1227';
+
 const map = new mapboxgl.Map({
   container: 'map',
   style: STYLE_URL,
@@ -32,20 +33,20 @@ const map = new mapboxgl.Map({
 });
 map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
 
-// Log and surface auth errors (401/403)
+// Surface auth/network errors
 map.on('error', (e) => {
   if (!e || !e.error) return;
   const s = String(e.error);
   console.error('[Mapbox GL JS error]', e.error);
   if (s.includes('401') || s.includes('403') || s.toLowerCase().includes('unauthorized')) {
-    showError('Authorization failed (401/403). Ensure your token has styles:read, tiles:read and Allowed URLs include https://falerosuanzes.github.io');
+    showError('Authorization failed (401/403). Ensure your token scopes include styles:read, tiles:read and Allowed URLs include https://falerosuanzes.github.io');
   }
 });
 
 map.on('load', () => {
   console.log('[Map] style loaded');
 
-  // Insert hover layers under labels if possible
+  // Insert hover layers under the first symbol layer (keeps labels above)
   const labelLayerId = (map.getStyle().layers.find(
     l => l.type === 'symbol' && l.layout && l.layout['text-field']
   ) || {}).id;
@@ -54,15 +55,15 @@ map.on('load', () => {
     catch (err) { console.error('addLayer failed:', def.id, err); }
   };
 
-  // 3) Add Mapbox Boundaries sources (requires Boundaries access)
+  // Mapbox Boundaries sources (require Boundaries access; 403 means you lack access)
   try {
-    map.addSource('adm1', { type: 'vector', url: 'mapbox://mapbox.boundaries-adm1-v4', promoteId: 'mapbox_id' });
-    map.addSource('adm2', { type: 'vector', url: 'mapbox://mapbox.boundaries-adm2-v4', promoteId: 'mapbox_id' });
+    map.addSource('adm1', { type: 'vector', url: 'mapbox://mapbox.boundaries-adm1-v4', promoteId: 'mapbox_id' }); // Provinces/States
+    map.addSource('adm2', { type: 'vector', url: 'mapbox://mapbox.boundaries-adm2-v4', promoteId: 'mapbox_id' }); // Counties
   } catch (e) {
     console.error('addSource failed:', e);
   }
 
-  // Worldview + country filters to match Boundaries Explorer behavior
+  // Filters matching Boundaries Explorer (US worldview + country filters)
   const worldviewFilter = ['any',
     ['==', ['get', 'worldview'], 'all'],
     ['in', 'US', ['get', 'worldview']]
@@ -70,7 +71,7 @@ map.on('load', () => {
   const caFilter = ['all', worldviewFilter, ['==', ['get', 'iso_3166_1'], 'CA']];
   const usFilter = ['all', worldviewFilter, ['==', ['get', 'iso_3166_1'], 'US']];
 
-  // 4) Invisible hit layers (capture pointer events)
+  // Invisible hit layers to catch pointer events
   addLayer({
     id: 'ca-provinces-hit',
     type: 'fill',
@@ -88,7 +89,7 @@ map.on('load', () => {
     paint: { 'fill-color': '#000', 'fill-opacity': 0 }
   });
 
-  // 5) Hover highlight layers (feature-state driven)
+  // Hover highlight layers (feature-state)
   addLayer({
     id: 'ca-provinces-hover-fill',
     type: 'fill',
@@ -134,9 +135,8 @@ map.on('load', () => {
     }
   });
 
-  // 6) Mouse handlers to toggle feature-state
-  let hoveredProvId = null;
-  let hoveredCountyId = null;
+  // Hover state handlers
+  let hoveredProvId = null, hoveredCountyId = null;
 
   map.on('mousemove', 'ca-provinces-hit', (e) => {
     const f = e.features && e.features[0];
